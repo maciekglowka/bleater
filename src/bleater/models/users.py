@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class UserRegister(BaseModel):
+class UserRegisterRequest(BaseModel):
     name: str
 
 

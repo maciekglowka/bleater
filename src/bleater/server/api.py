@@ -1,6 +1,7 @@
-from bleater.models.messages import MessagePost
+from bleater.farm.tools import SubmitPost
+from bleater.models.posts import PostSubmitRequest
 from bleater.server.storage import BaseStorage, get_storage
-from bleater.models.users import User, UserRegister
+from bleater.models.users import User, UserRegisterRequest
 import datetime
 from fastapi import APIRouter, Depends, Body, HTTPException
 from typing import Annotated
@@ -15,7 +16,7 @@ async def api_root():
 
 @router.post("/users/register")
 async def user_register(
-    body: UserRegister,
+    body: UserRegisterRequest,
     repository: Annotated[BaseStorage, Depends(get_storage)],
 ) -> User | None:
     user = await repository.register_user(body.name)
@@ -24,10 +25,10 @@ async def user_register(
     return user
 
 
-@router.post("/messages")
+@router.post("/posts")
 async def user_register(
-    body: MessagePost,
+    body: PostSubmitRequest,
     repository: Annotated[BaseStorage, Depends(get_storage)],
 ) -> None:
     ts = int(datetime.datetime.now().timestamp())
-    await repository.post_message(body, ts)
+    await repository.submit_post(body, ts)

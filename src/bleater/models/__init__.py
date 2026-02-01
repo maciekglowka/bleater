@@ -1,2 +1,2 @@
-from .messages import Message, Thread
+from .posts import Post, Thread
 from .users import User

@@ -2,15 +2,15 @@ from bleater.models.users import User
 from pydantic import BaseModel
 
 
-class MessagePost(BaseModel):
-    """Post message request"""
+class PostSubmitRequest(BaseModel):
+    """Post or response payload"""
 
     user_id: str
     content: str
     parent_id: str | None = None
 
 
-class Message(BaseModel):
+class Post(BaseModel):
     id: str
     user: User
     content: str
@@ -19,5 +19,5 @@ class Message(BaseModel):
 
 class Thread(BaseModel):
     id: str
-    root: Message
-    replies: list[Message]
+    root: Post
+    replies: list[Post]

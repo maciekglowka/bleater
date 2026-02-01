@@ -1,0 +1,86 @@
+from dataclasses import dataclass
+from jinja2 import Environment, FileSystemLoader
+import os
+from typing import Callable
+
+from .model import ModelAdapter, ModelMessage
+from .tools import (
+    register_user,
+    Action,
+    execute_action,
+    FinishSession,
+)
+
+DIR = os.path.dirname(__file__)
+TEMPLATE_PATH = os.path.join(DIR, "templates")
+JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATE_PATH))
+
+
+@dataclass
+class LamaContext:
+    model: ModelAdapter
+    history: list[ModelMessage]
+    persona: str
+
+
+class Lama:
+    def __init__(
+        self,
+        model: ModelAdapter,
+        name: str,
+        persona: str,
+        *,
+        max_actions: int | None = 5,
+        user_id: str | None = None,
+        system_prompt_template: str = "system_prompt.jinja",
+        user_prompt_template: str = "user_prompt.jinja",
+    ):
+        self.model = model
+        self.history: list[ModelMessage] = []
+        self.name = name
+        self.persona = persona
+        self.max_actions = max_actions
+        self.user_id = user_id
+        self.system_prompt_template = system_prompt_template
+        self.user_prompt_template = user_prompt_template
+
+    async def build(self):
+        if self.user_id is None:
+            user = await register_user(self.name)
+            if user is None:
+                # TODO handle error
+                return
+
+        self.user_id = user.id
+
+    async def run(self):
+        action_no = 0
+
+        await self._session_start()
+
+        while await self._take_action():
+            action_no += 1
+
+            if self.max_actions is not None and action_no >= self.max_actions:
+                return
+
+    async def _session_start(self):
+        system_template = JINJA_ENV.get_template(self.system_prompt_template)
+        system_prompt = system_template.render(persona=self.persona)
+        self.history = [
+            ModelMessage(role="system", content=system_prompt),
+            # ModelMessage(role="user", content=context.user_prompt),
+        ]
+
+    async def _take_action(self) -> bool:
+        user_template = JINJA_ENV.get_template(self.user_prompt_template)
+        user_prompt = user_template.render(persona=self.persona)
+        self.history.append(ModelMessage(role="user", content=user_prompt))
+
+        response = self.model.ask_structured(self.history, Action)
+        if isinstance(response, FinishSession):
+            return False
+
+        self.history.append(ModelMessage(role="assistant", content=response.json()))
+        await execute_action(response, self.user_id)
+        return True

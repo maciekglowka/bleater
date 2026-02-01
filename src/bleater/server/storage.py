@@ -1,14 +1,14 @@
-from bleater.models.messages import MessagePost
+from bleater.models.posts import PostSubmitRequest
 import sqlite3
 from abc import ABC, abstractmethod
 import aiosqlite
-from bleater.models import Message, Thread, User
+from bleater.models import Post, Thread, User
 import os
 from typing import Callable, Awaitable, AsyncGenerator, TypeAlias
 import uuid
 
 
-DIR = os.path.dirname(os.path.abspath(__file__))
+DIR = os.path.dirname(__file__)
 ASSETS_DIR = os.path.join(DIR, "assets")
 
 
@@ -65,8 +65,8 @@ class BaseStorage(ABC):
         """Register user by name. Returns None on name conflict."""
 
     @abstractmethod
-    async def post_message(self, message: MessagePost, timestamp: int) -> None:
-        """Post new message or reply."""
+    async def submit_post(self, post: PostSubmitRequest, timestamp: int) -> None:
+        """Submit a new post or reply."""
 
     @abstractmethod
     async def get_thread(self, id: str) -> Thread | None:
@@ -98,18 +98,17 @@ class SqliteStorage(BaseStorage):
         except sqlite3.IntegrityError:
             return None
 
-    async def post_message(self, message: MessagePost, timestamp: int) -> None:
-        """Post new message or reply."""
+    async def submit_post(self, post: PostSubmitRequest, timestamp: int) -> None:
         assert self.db is not None
         # Older sqlites might not support native uuid()
         id = str(uuid.uuid4())
         await self.db.execute(
             (
-                "INSERT INTO message"
+                "INSERT INTO post"
                 "(id, parent_id, user_id, content, timestamp)"
                 "VALUES (?, ?, ?, ?, ?)"
             ),
-            [id, message.parent_id, message.user_id, message.content, timestamp],
+            [id, post.parent_id, post.user_id, post.content, timestamp],
         )
         await self.db.commit()
 

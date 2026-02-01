@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS user (
     name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS message (
+CREATE TABLE IF NOT EXISTS post (
     id TEXT PRIMARY KEY,
     parent_id TEXT,
     user_id TEXT NOT NULL,
