@@ -1,5 +1,6 @@
+from bleater.server.feed import get_feed
 from bleater.farm.tools import SubmitPost
-from bleater.models.posts import PostSubmitRequest
+from bleater.models.posts import PostSubmitRequest, Post
 from bleater.server.storage import BaseStorage, get_storage
 from bleater.models.users import User, UserRegisterRequest
 import datetime
@@ -17,18 +18,25 @@ async def api_root():
 @router.post("/users/register")
 async def user_register(
     body: UserRegisterRequest,
-    repository: Annotated[BaseStorage, Depends(get_storage)],
+    storage: Annotated[BaseStorage, Depends(get_storage)],
 ) -> User | None:
-    user = await repository.register_user(body.name)
+    user = await storage.register_user(body.name)
     if user is None:
         raise HTTPException(400)
     return user
 
 
 @router.post("/posts")
-async def user_register(
+async def submit_post(
     body: PostSubmitRequest,
-    repository: Annotated[BaseStorage, Depends(get_storage)],
+    storage: Annotated[BaseStorage, Depends(get_storage)],
 ) -> None:
     ts = int(datetime.datetime.now().timestamp())
-    await repository.submit_post(body, ts)
+    await storage.submit_post(body, ts)
+
+
+@router.get("/posts/recent")
+async def recent_posts(
+    storage: Annotated[BaseStorage, Depends(get_storage)],
+) -> list[Post]:
+    return await get_feed(storage)

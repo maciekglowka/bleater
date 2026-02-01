@@ -72,6 +72,10 @@ class BaseStorage(ABC):
     async def get_thread(self, id: str) -> Thread | None:
         """Fetch single thread with replies"""
 
+    @abstractmethod
+    async def get_last_posts(self, count: int) -> list[Post]:
+        """Fetch a list of most recent top-level posts"""
+
 
 class SqliteStorage(BaseStorage):
     def __init__(self, path: str):
@@ -104,8 +108,8 @@ class SqliteStorage(BaseStorage):
         id = str(uuid.uuid4())
         await self.db.execute(
             (
-                "INSERT INTO post"
-                "(id, parent_id, user_id, content, timestamp)"
+                "INSERT INTO post "
+                "(id, parent_id, user_id, content, timestamp) "
                 "VALUES (?, ?, ?, ?, ?)"
             ),
             [id, post.parent_id, post.user_id, post.content, timestamp],
@@ -114,3 +118,30 @@ class SqliteStorage(BaseStorage):
 
     async def get_thread(self, id: str) -> Thread | None:
         pass
+
+    async def get_last_posts(self, count: int) -> list[Post]:
+        assert self.db is not None
+        cursor = await self.db.execute(
+            (
+                "SELECT p.id, p.content, p.timestamp, u.id, u.name, count(r.id) "
+                "FROM post p "
+                "LEFT JOIN post r ON r.parent_id = p.id "
+                "JOIN user u ON u.id = p.user_id "
+                "GROUP BY p.id, p.content, p.timestamp, u.id, u.name "
+                "ORDER BY p.timestamp DESC "
+                "LIMIT ?"
+            ),
+            [count],
+        )
+        rows = await cursor.fetchall()
+        posts = [
+            Post(
+                id=row[0],
+                content=row[1],
+                timestamp=row[2],
+                user=User(id=row[3], name=row[4]),
+                replies=row[5],
+            )
+            for row in rows
+        ]
+        return posts

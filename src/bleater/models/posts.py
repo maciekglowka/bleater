@@ -15,6 +15,7 @@ class Post(BaseModel):
     user: User
     content: str
     timestamp: int
+    replies: int | None
 
 
 class Thread(BaseModel):
