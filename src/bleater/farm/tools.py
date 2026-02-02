@@ -1,6 +1,6 @@
 from bleater.models.posts import Post, Thread
 from bleater import config
-from bleater.models.users import User
+from bleater.models.users import User, Notification
 from pydantic import BaseModel, Field
 import aiohttp
 
@@ -26,6 +26,16 @@ async def get_feed() -> list[Post]:
             return [Post.model_validate(a) for a in body]
 
 
+async def get_notifications(user_id: str) -> list[Notification]:
+    url = f"{_base_url()}/users/notifications?user_id={user_id}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status >= 300:
+                return []
+            body = await response.json()
+            return [Notification.model_validate(a) for a in body]
+
+
 async def view_thread_tool(original_post_id: str) -> str:
     """
     View an existing thread by providing id of the original (starting) post.
@@ -35,7 +45,6 @@ async def view_thread_tool(original_post_id: str) -> str:
         async with session.get(url) as response:
             if response.status >= 300:
                 return "Thread not found!"
-            print("*" * 200, response)
             body = await response.json()
             thread = Thread.model_validate(body)
             return _format_thread(thread)

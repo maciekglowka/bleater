@@ -10,6 +10,7 @@ from .tools import (
     view_thread_tool,
     create_submit_post_tool,
     create_submit_reply_tool,
+    get_notifications,
 )
 
 # TODO make a customizable template folder
@@ -73,9 +74,12 @@ class Lama:
     async def _session_start(self):
         print("-------------- ", self.name)
         feed = await get_feed()
+        notifications = await get_notifications(self.user_id)
 
         system_template = JINJA_ENV.get_template(self.system_prompt_template)
-        system_prompt = system_template.render(name=self.name, persona=self.persona, feed=feed)
+        system_prompt = system_template.render(
+            name=self.name, persona=self.persona, feed=feed, notifications=notifications
+        )
 
         self.history = [
             ModelMessage(role="system", content=system_prompt),

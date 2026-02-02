@@ -1,3 +1,4 @@
+from bleater.models.users import Notification
 from bleater.models.posts import PostSubmitRequest
 import sqlite3
 from abc import ABC, abstractmethod
@@ -94,6 +95,18 @@ class BaseStorage(ABC):
     async def get_last_posts(self, count: int) -> list[Post]:
         """Fetch a list of most recent top-level posts"""
 
+    @abstractmethod
+    async def notify(self, user_id: str, content: str, post_id: str, mentioned_user_id: str, timestamp: int) -> None:
+        """Remove all user notifications"""
+
+    @abstractmethod
+    async def get_user_notifications(self, user_id: str, count: int) -> list[Notification]:
+        """Get most recent user notifications"""
+
+    @abstractmethod
+    async def purge_user_notifications(self, user_id: str) -> None:
+        """Remove all user notifications"""
+
 
 class SqliteStorage(BaseStorage):
     def __init__(self, path: str):
@@ -168,6 +181,51 @@ class SqliteStorage(BaseStorage):
         rows = await cursor.fetchall()
         posts = [SqliteStorage._post_from_row(row) for row in rows]
         return posts
+
+    async def notify(self, user_id: str, content: str, post_id: str, mentioned_user_id: str, timestamp: int) -> None:
+        assert self.db is not None
+        # Older sqlites might not support native uuid()
+        id = str(uuid.uuid4())
+        await self.db.execute(
+            (
+                "INSERT INTO notification (id, user_id, post_id, content, mentioned_user_id, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+            ),
+            [id, user_id, post_id, content, mentioned_user_id, timestamp],
+        )
+        await self.db.commit()
+
+    async def get_user_notifications(self, user_id: str, count: int) -> list[Notification]:
+        assert self.db is not None
+        cursor = await self.db.execute(
+            (
+                "SELECT n.id, n.user_id, n.content, n.post_id, n.timestamp, u.id, u.name "
+                "FROM notification n "
+                "JOIN user u ON u.id = n.mentioned_user_id "
+                "WHERE user_id = ? "
+                "ORDER BY n.timestamp DESC LIMIT ?"
+            ),
+            [user_id, count],
+        )
+        rows = await cursor.fetchall()
+        return [
+            Notification(
+                id=row[0],
+                user_id=row[1],
+                content=row[2],
+                post_id=row[3],
+                timestamp=row[4],
+                mentioned_user=User(id=row[5], name=row[6]),
+            )
+            for row in rows
+        ]
+
+    async def purge_user_notifications(self, user_id: str) -> None:
+        assert self.db is not None
+        await self.db.execute(
+            ("DELETE FROM notification WHERE user_id = ?"),
+            [user_id],
+        )
+        await self.db.commit()
 
     @staticmethod
     def _base_post_query() -> str:
