@@ -13,8 +13,9 @@ model = OllamaAdapter()
 herd = Herd(
     model,
     lamas=[
-        Lama("Lama", "You are a tech enthusiast / nerd"),
-        Lama("Half-Lama", "You are a pro gamer"),
+        Lama("BashLama", "You are a tech enthusiast / nerd. Mostly interested in cli tools."),
+        Lama("Marv998", "You are a pro gamer from well known Hungarian e-sport team. You specialise in MOBA games"),
+        Lama("Barb", "You are a tech life-style journalist. Always up to new trends."),
     ],
 )
 

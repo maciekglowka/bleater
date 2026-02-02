@@ -149,7 +149,7 @@ class SqliteStorage(BaseStorage):
             SqliteStorage._base_post_query()
             + "WHERE p.parent_id = ? "
             + SqliteStorage._post_group_by()
-            + "ORDER BY p.timestamp DESC",
+            + "ORDER BY p.timestamp ASC",
             [id],
         )
         rows = await cursor.fetchall()

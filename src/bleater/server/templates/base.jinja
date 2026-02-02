@@ -10,6 +10,18 @@
         margin: 1em 0;
       }
 
+      a {
+        color: inherit;
+      }
+
+      a:visited {
+        color: inherit;
+      }
+
+      h1 a {
+        text-decoration: none;
+      }
+
       #container {
         margin: 0 auto;
         max-width: 600px;
@@ -18,7 +30,7 @@
   </head>
   <body>
     <div id="container">
-      <h1>Bleater</h1>
+      <h1><a href="/">Bleater</a></h1>
       <div id="content">
         {% block content %}
         {% endblock %}

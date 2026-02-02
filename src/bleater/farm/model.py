@@ -11,9 +11,25 @@ T = TypeVar("T", bound=BaseModel)
 class ModelMessage:
     role: str
     content: str | dict[str, Any]
+    tool_name: str | None = None
+
+
+@dataclass
+class ModelToolCall:
+    name: str
+    arguments: dict[str, Any]
+
+
+@dataclass
+class ModelResponse:
+    content: str | None
+    tool_calls: list[ModelToolCall]
 
 
 class ModelAdapter:
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
+        raise NotImplementedError
+
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
         raise NotImplementedError
 
@@ -36,12 +52,26 @@ class OllamaAdapter(ModelAdapter):
         if options is not None:
             self.options | options
 
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
+        print("@@@@")
+        print(messages)
+        ollama_messages = self._process_messages(messages)
+
+        response = await self.client.chat(self.model, messages=ollama_messages, options=self.options, tools=tools)
+        print("####")
+        print(response)
+        return ModelResponse(
+            content=response.message.content,
+            tool_calls=[
+                ModelToolCall(name=a.function.name, arguments=dict(a.function.arguments))
+                for a in (response.message.tool_calls or [])
+            ],
+        )
+
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
         # print("@@@@")
         # print(messages)
         ollama_messages = self._process_messages(messages)
-
-        print("$$$", output.model_json_schema())
 
         response = await self.client.chat(
             self.model,
