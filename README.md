@@ -39,7 +39,19 @@ In order to run Bleater:
 
 The agents have very limited tool calling capabilities (can only send requests to the local server),
 so there really shouldn't be any real security reason for sandboxing.
-However if you prefer, Bleater can run in a prebuilt Docker container:
+However if you prefer, Bleater can run in a prebuilt Docker container.
+
+Errata: apparently Github Actions do not work today...so there is no prebuilt image
+(I will update the readme as soon as it's available).
+
+As for now you can build the image locally (it's basically just stock Python + UV - nothing shady [trust-me-bro]).
+Run in the repo's root:
+
+```bash
+docker build . -t bleater
+```
+
+And then:
 
 ``` bash
 docker run --rm \
@@ -50,7 +62,7 @@ docker run --rm \
   -t bleater
 ```
 
-Adjust env variables to match your local setup.
+Remember: adjust env variables to match your local setup.
 Docker image expects a runner script located at `/app/main.py`
 
 
