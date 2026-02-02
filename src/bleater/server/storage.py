@@ -80,6 +80,10 @@ class BaseStorage(ABC):
         """Register user by name. Returns None on name conflict."""
 
     @abstractmethod
+    async def get_users(self) -> list[User]:
+        """Get all registered users"""
+
+    @abstractmethod
     async def submit_post(self, post: PostSubmitRequest, timestamp: int) -> None:
         """Submit a new post or reply."""
 
@@ -94,6 +98,10 @@ class BaseStorage(ABC):
     @abstractmethod
     async def get_last_posts(self, count: int) -> list[Post]:
         """Fetch a list of most recent top-level posts"""
+
+    @abstractmethod
+    async def get_user_posts(self, user_id: str) -> list[Post]:
+        """Fetch all posts by user"""
 
     @abstractmethod
     async def notify(self, user_id: str, content: str, post_id: str, mentioned_user_id: str, timestamp: int) -> None:
@@ -130,6 +138,21 @@ class SqliteStorage(BaseStorage):
             return User(id=id, name=name)
         except sqlite3.IntegrityError:
             return None
+
+    async def get_users(self) -> list[User]:
+        assert self.db is not None
+        cursor = await self.db.execute(
+            ("SELECT id, name FROM user"),
+            [],
+        )
+        rows = await cursor.fetchall()
+        return [
+            User(
+                id=row[0],
+                name=row[1],
+            )
+            for row in rows
+        ]
 
     async def submit_post(self, post: PostSubmitRequest, timestamp: int) -> None:
         assert self.db is not None
@@ -177,6 +200,19 @@ class SqliteStorage(BaseStorage):
             + SqliteStorage._post_group_by()
             + "ORDER BY p.timestamp DESC LIMIT ?",
             [count],
+        )
+        rows = await cursor.fetchall()
+        posts = [SqliteStorage._post_from_row(row) for row in rows]
+        return posts
+
+    async def get_user_posts(self, user_id: str) -> list[Post]:
+        assert self.db is not None
+        cursor = await self.db.execute(
+            SqliteStorage._base_post_query()
+            + "WHERE p.user_id = ? "
+            + SqliteStorage._post_group_by()
+            + "ORDER BY p.timestamp DESC",
+            [user_id],
         )
         rows = await cursor.fetchall()
         posts = [SqliteStorage._post_from_row(row) for row in rows]

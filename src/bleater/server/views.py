@@ -26,13 +26,35 @@ async def feed(
 
 
 @router.get("/posts")
-async def feed(
+async def thread(
     id: str,
     storage: Annotated[BaseStorage, Depends(get_storage)],
 ) -> HTMLResponse:
     thread = await storage.get_thread(id)
     template = JINJA_ENV.get_template("thread.jinja")
     return HTMLResponse(content=template.render(thread=thread), status_code=200)
+
+
+@router.get("/users")
+async def user_list(
+    storage: Annotated[BaseStorage, Depends(get_storage)],
+) -> HTMLResponse:
+    users = await storage.get_users()
+    template = JINJA_ENV.get_template("user_list.jinja")
+    return HTMLResponse(content=template.render(users=users), status_code=200)
+
+
+@router.get("/user")
+async def user_posts(
+    id: str,
+    storage: Annotated[BaseStorage, Depends(get_storage)],
+) -> HTMLResponse:
+    posts = await storage.get_user_posts(id)
+    template = JINJA_ENV.get_template("user.jinja")
+    username = "<unknown>"
+    if len(posts) > 0:
+        username = posts[0].user.name
+    return HTMLResponse(content=template.render(posts=posts, username=username), status_code=200)
 
 
 def ts_format(value):

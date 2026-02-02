@@ -1,10 +1,13 @@
 from bleater import config
 from dataclasses import dataclass
+from logging import getLogger
 from ollama import AsyncClient
 from pydantic import BaseModel
 from typing import TypeVar, Any, Callable
 
 T = TypeVar("T", bound=BaseModel)
+
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -53,13 +56,10 @@ class OllamaAdapter(ModelAdapter):
             self.options | options
 
     async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
-        print("@@@@")
-        print(messages)
         ollama_messages = self._process_messages(messages)
 
         response = await self.client.chat(self.model, messages=ollama_messages, options=self.options, tools=tools)
-        print("####")
-        print(response)
+        logger.info(f"Model response: {response}")
         return ModelResponse(
             content=response.message.content,
             tool_calls=[
@@ -69,8 +69,6 @@ class OllamaAdapter(ModelAdapter):
         )
 
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
-        # print("@@@@")
-        # print(messages)
         ollama_messages = self._process_messages(messages)
 
         response = await self.client.chat(
@@ -79,8 +77,7 @@ class OllamaAdapter(ModelAdapter):
             options=self.options,
             format=output.model_json_schema(),
         )
-        print("####")
-        print(response)
+        logger.info(f"Model response: {response}")
         return output.model_validate_json(response.message.content)
 
     def _process_messages(self, messages: list[ModelMessage]) -> list[dict[str, Any]]:

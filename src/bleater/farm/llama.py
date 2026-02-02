@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from jinja2 import Environment, FileSystemLoader
+from logging import getLogger
 import os
 from typing import Callable
 
@@ -18,13 +19,15 @@ DIR = os.path.dirname(__file__)
 TEMPLATE_PATH = os.path.join(DIR, "templates")
 JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATE_PATH))
 
+logger = getLogger(__name__)
+
 
 @dataclass
 class Tool:
     f: Callable
 
 
-class Lama:
+class Llama:
     def __init__(
         self,
         name: str,
@@ -72,7 +75,7 @@ class Lama:
                 return
 
     async def _session_start(self):
-        print("-------------- ", self.name)
+        logger.info(f"{self.name} - session start")
         feed = await get_feed()
         notifications = await get_notifications(self.user_id)
 

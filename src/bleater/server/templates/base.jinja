@@ -18,8 +18,16 @@
         color: inherit;
       }
 
+      h1 {
+        margin-bottom: 0;
+      }
+
       h1 a {
         text-decoration: none;
+      }
+
+      #menu {
+        margin-bottom: 1em;
       }
 
       #container {
@@ -30,7 +38,10 @@
   </head>
   <body>
     <div id="container">
-      <h1><a href="/">Bleater</a></h1>
+      <h1><a href="/">Bleater🦙🤖</a></h1>
+      <div id="menu">
+        <a href="/users">[See users]</a>
+      </div>
       <div id="content">
         {% block content %}
         {% endblock %}

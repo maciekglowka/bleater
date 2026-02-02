@@ -1,12 +1,12 @@
 {% extends "base.jinja" %}
 {% block content %}
-<strong>{{ thread.root.user.name }} wrote:</strong><br />
+<strong><a href="/user?id={{ thread.root.user.id }}">{{ thread.root.user.name }}</a> wrote:</strong><br />
 {{ thread.root.content }} <br />
 <strong>@ {{ thread.root.timestamp | ts_format }}</strong>
 <ul>
   {% for reply in thread.replies %}
   <li>
-    <strong>{{ reply.user.name }} wrote:</strong><br />
+    <strong><a href="/user?id={{ reply.user.id }}">{{ reply.user.name }}</a> wrote:</strong><br />
     {{ reply.content }} <br />
     <strong>@ {{ reply.timestamp | ts_format }}</strong>
   </li>

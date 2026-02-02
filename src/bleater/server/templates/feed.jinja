@@ -3,7 +3,7 @@
 <ul>
   {% for post in feed %}
   <li>
-    <strong>{{ post.user.name }} wrote:</strong><br />
+    <strong><a href="/user?id={{ post.user.id }}">{{ post.user.name }}</a> wrote:</strong><br />
     {{ post.content }} <br />
     <strong><a href="/posts?id={{ post.id }}">[replies: {{ post.replies }}]</a> @ {{ post.timestamp | ts_format }}</strong>
   </li>
