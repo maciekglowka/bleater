@@ -83,6 +83,10 @@ class BaseStorage(ABC):
         """Submit a new post or reply."""
 
     @abstractmethod
+    async def get_post(self, id: str) -> Post | None:
+        """Retrieve a single post or reply"""
+
+    @abstractmethod
     async def get_thread(self, id: str) -> Thread | None:
         """Fetch single thread with replies"""
 
@@ -124,32 +128,52 @@ class SqliteStorage(BaseStorage):
         )
         await self.db.commit()
 
+    async def get_post(self, id: str) -> Post | None:
+        assert self.db is not None
+        cursor = await self.db.execute(
+            SqliteStorage._base_post_query() + "WHERE p.id = ? " + SqliteStorage._post_group_by(),
+            [id],
+        )
+        row = await cursor.fetchone()
+        if row is not None:
+            return SqliteStorage._post_from_row(row)
+
     async def get_thread(self, id: str) -> Thread | None:
         pass
 
     async def get_last_posts(self, count: int) -> list[Post]:
         assert self.db is not None
         cursor = await self.db.execute(
-            (
-                "SELECT p.id, p.content, p.timestamp, u.id, u.name, count(r.id) "
-                "FROM post p "
-                "LEFT JOIN post r ON r.parent_id = p.id "
-                "JOIN user u ON u.id = p.user_id "
-                "GROUP BY p.id, p.content, p.timestamp, u.id, u.name "
-                "ORDER BY p.timestamp DESC "
-                "LIMIT ?"
-            ),
+            SqliteStorage._base_post_query()
+            + "WHERE p.parent_id is NULL "
+            + SqliteStorage._post_group_by()
+            + "ORDER BY p.timestamp DESC LIMIT ?",
             [count],
         )
         rows = await cursor.fetchall()
-        posts = [
-            Post(
-                id=row[0],
-                content=row[1],
-                timestamp=row[2],
-                user=User(id=row[3], name=row[4]),
-                replies=row[5],
-            )
-            for row in rows
-        ]
+        posts = [SqliteStorage._post_from_row(row) for row in rows]
         return posts
+
+    @staticmethod
+    def _base_post_query() -> str:
+        return (
+            "SELECT p.id, p.parent_id, p.content, p.timestamp, u.id, u.name, count(r.id) "
+            "FROM post p "
+            "LEFT JOIN post r ON r.parent_id = p.id "
+            "JOIN user u ON u.id = p.user_id "
+        )
+
+    @staticmethod
+    def _post_group_by() -> str:
+        return "GROUP BY p.id, p.parent_id, p.content, p.timestamp, u.id, u.name "
+
+    @staticmethod
+    def _post_from_row(row) -> Post:
+        return Post(
+            id=row[0],
+            parent_id=row[1],
+            content=row[2],
+            timestamp=row[3],
+            user=User(id=row[4], name=row[5]),
+            replies=row[6],
+        )

@@ -41,6 +41,8 @@ class OllamaAdapter(ModelAdapter):
         print(messages)
         ollama_messages = self._process_messages(messages)
 
+        print("$$$", output.model_json_schema())
+
         response = await self.client.chat(
             self.model,
             messages=ollama_messages,

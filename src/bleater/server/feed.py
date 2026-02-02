@@ -8,6 +8,9 @@ import datetime
 async def get_feed(storage: BaseStorage) -> list[Post]:
     ts = int(datetime.datetime.now().timestamp())
     recent = await storage.get_last_posts(100)
+    if len(recent) == 0:
+        return []
+
     earliest = recent[-1].timestamp
     ts_span = ts - earliest
 
@@ -19,5 +22,8 @@ async def get_feed(storage: BaseStorage) -> list[Post]:
 def _post_weight(now: int, post: Post, ts_span: int) -> int:
     # We assume it's never 0 ;)
     td = now - post.timestamp
-    tw = ts_span // td
+    if td > 0:
+        tw = ts_span // td
+    else:
+        tw = ts_span
     return tw + (post.replies or 0)

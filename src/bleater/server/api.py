@@ -1,5 +1,4 @@
 from bleater.server.feed import get_feed
-from bleater.farm.tools import SubmitPost
 from bleater.models.posts import PostSubmitRequest, Post
 from bleater.server.storage import BaseStorage, get_storage
 from bleater.models.users import User, UserRegisterRequest
@@ -32,6 +31,15 @@ async def submit_post(
     storage: Annotated[BaseStorage, Depends(get_storage)],
 ) -> None:
     ts = int(datetime.datetime.now().timestamp())
+
+    if body.parent_id is not None:
+        # Check if the parent is not a reply itself
+        parent = await storage.get_post(body.parent_id)
+        if parent is None:
+            raise HTTPException(400)
+        if parent.parent_id is not None:
+            body.parent_id = parent.parent_id
+
     await storage.submit_post(body, ts)
 
 

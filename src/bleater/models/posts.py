@@ -12,6 +12,7 @@ class PostSubmitRequest(BaseModel):
 
 class Post(BaseModel):
     id: str
+    parent_id: str | None
     user: User
     content: str
     timestamp: int

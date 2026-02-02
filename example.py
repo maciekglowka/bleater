@@ -7,14 +7,15 @@ from bleater.server import BleaterServer
 import os
 
 
-server = BleaterServer(storage=SqlliteStorageBuilder())
+server = BleaterServer(storage=SqlliteStorageBuilder(path="test.db"))
 model = OllamaAdapter()
 
 herd = Herd(
-    [
-        Lama(model, "Lama", "You are a tech enthusiast / nerd"),
-        Lama(model, "Half-Lama", "You are a pro gamer"),
-    ]
+    model,
+    lamas=[
+        Lama("Lama", "You are a tech enthusiast / nerd"),
+        Lama("Half-Lama", "You are a pro gamer"),
+    ],
 )
 
 
