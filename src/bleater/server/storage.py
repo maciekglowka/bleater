@@ -5,6 +5,7 @@ import aiosqlite
 from bleater.models import Post, Thread, User
 import os
 from typing import Callable, Awaitable, AsyncGenerator, TypeAlias
+import tempfile
 import uuid
 
 
@@ -12,9 +13,7 @@ DIR = os.path.dirname(__file__)
 ASSETS_DIR = os.path.join(DIR, "assets")
 
 
-StorageResult: TypeAlias = (
-    Awaitable["BaseStorage"] | AsyncGenerator["BaseStorage", None]
-)
+StorageResult: TypeAlias = Awaitable["BaseStorage"] | AsyncGenerator["BaseStorage", None]
 
 
 async def get_storage() -> BaseStorage:
@@ -28,10 +27,20 @@ class BaseStorageBuilder(ABC):
     ) -> Callable[[], StorageResult]:
         """Build storage getter"""
 
+    @abstractmethod
+    async def close(self):
+        """Storage teardown"""
+
 
 class SqlliteStorageBuilder(BaseStorageBuilder):
-    def __init__(self, path: str):
-        self.path = path
+    def __init__(self, *, path: str | None = None):
+        if path is None:
+            with tempfile.NamedTemporaryFile(delete_on_close=False) as f:
+                self.path = f.name
+            self.is_temp = True
+        else:
+            self.path = path
+            self.is_temp = False
 
     async def build(self) -> Callable[[], StorageResult]:
         await self._init_db()
@@ -47,6 +56,11 @@ class SqlliteStorageBuilder(BaseStorageBuilder):
                     await db.close()
 
         return get_sqlite_storage
+
+    async def close(self):
+        # FIXME: blocking code
+        if self.is_temp:
+            os.remove(self.path)
 
     async def _init_db(self):
         # FIXME: Blocking operation
@@ -94,9 +108,7 @@ class SqliteStorage(BaseStorage):
         # Older sqlites might not support native uuid()
         id = str(uuid.uuid4())
         try:
-            await self.db.execute(
-                "INSERT INTO user (id, name) VALUES (?, ?)", [id, name]
-            )
+            await self.db.execute("INSERT INTO user (id, name) VALUES (?, ?)", [id, name])
             await self.db.commit()
             return User(id=id, name=name)
         except sqlite3.IntegrityError:
@@ -107,11 +119,7 @@ class SqliteStorage(BaseStorage):
         # Older sqlites might not support native uuid()
         id = str(uuid.uuid4())
         await self.db.execute(
-            (
-                "INSERT INTO post "
-                "(id, parent_id, user_id, content, timestamp) "
-                "VALUES (?, ?, ?, ?, ?)"
-            ),
+            ("INSERT INTO post (id, parent_id, user_id, content, timestamp) VALUES (?, ?, ?, ?, ?)"),
             [id, post.parent_id, post.user_id, post.content, timestamp],
         )
         await self.db.commit()

@@ -1,5 +1,6 @@
+from bleater import config
 from dataclasses import dataclass
-from ollama import Client
+from ollama import AsyncClient
 from pydantic import BaseModel
 from typing import TypeVar, Any, Callable
 
@@ -13,24 +14,34 @@ class ModelMessage:
 
 
 class ModelAdapter:
-    def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
+    async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
         raise NotImplementedError
 
 
 class OllamaAdapter(ModelAdapter):
     def __init__(
-        self, client: Client, model: str, options: dict[str, Any] | None = None
+        self, *, client: AsyncClient | None = None, model: str | None = None, options: dict[str, Any] | None = None
     ):
-        self.client = client
-        self.model = model
-        self.options = options or {}
+        if client is None:
+            self.client = AsyncClient(host=config.OLLAMA_HOST)
+        else:
+            self.client = client
 
-    def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
+        if model is None:
+            self.model = config.OLLAMA_MODEL
+        else:
+            self.model = model
+
+        self.options = {"num_ctx": config.OLLAMA_NUM_CTX}
+        if options is not None:
+            self.options | options
+
+    async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
         print("@@@@")
         print(messages)
         ollama_messages = self._process_messages(messages)
 
-        response = self.client.chat(
+        response = await self.client.chat(
             self.model,
             messages=ollama_messages,
             options=self.options,

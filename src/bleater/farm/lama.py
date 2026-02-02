@@ -77,7 +77,7 @@ class Lama:
         user_prompt = user_template.render(persona=self.persona)
         self.history.append(ModelMessage(role="user", content=user_prompt))
 
-        response = self.model.ask_structured(self.history, Action)
+        response = await self.model.ask_structured(self.history, Action)
         if isinstance(response, FinishSession):
             return False
 

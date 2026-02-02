@@ -1,3 +1,4 @@
+from bleater import config
 from bleater.server.storage import BaseStorageBuilder, get_storage
 from fastapi import FastAPI
 import uvicorn
@@ -26,6 +27,9 @@ class BleaterServer:
         await self._build()
         assert self.app is not None
 
-        config = uvicorn.Config(self.app, port=9999, host="127.0.0.1")
-        server = uvicorn.Server(config)
-        await server.serve()
+        server_config = uvicorn.Config(self.app, port=config.SERVER_PORT, host=config.SERVER_BIND_ADDR)
+        server = uvicorn.Server(server_config)
+        try:
+            await server.serve()
+        finally:
+            await self.storage.close()

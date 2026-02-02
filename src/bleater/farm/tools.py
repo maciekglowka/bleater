@@ -1,9 +1,7 @@
+from bleater import config
 from bleater.models.users import User
 from pydantic import BaseModel
 import aiohttp
-
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 9999
 
 
 class SubmitPost(BaseModel):
@@ -32,7 +30,7 @@ async def execute_action(action: Action, user_id: str):
 
 
 async def register_user(name) -> User | None:
-    url = f"http://{SERVER_HOST}:{SERVER_PORT}/api/users/register"
+    url = f"{_base_url()}/users/register"
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json={"name": name}) as response:
             if response.status >= 300:
@@ -60,9 +58,11 @@ async def submit_reply(user_id: str, post: SubmitReply):
 
 
 async def _submit_post_request(user_id: str, content: str, parent_id: str | None):
-    url = f"http://{SERVER_HOST}:{SERVER_PORT}/api/posts"
+    url = f"{_base_url()}/posts"
     async with aiohttp.ClientSession() as session:
-        async with session.post(
-            url, json={"user_id": user_id, "content": content, "parent_id": parent_id}
-        ) as response:
+        async with session.post(url, json={"user_id": user_id, "content": content, "parent_id": parent_id}) as response:
             print("@@@@@@", response)
+
+
+def _base_url() -> str:
+    return f"http://{config.SERVER_HOST}:{config.SERVER_PORT}/api"
