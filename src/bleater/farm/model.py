@@ -47,6 +47,8 @@ class OllamaAdapter(ModelAdapter):
             self.client = client
 
         if model is None:
+            if not config.OLLAMA_MODEL:
+                raise ValueError("Please specify a valid model for Ollama")
             self.model = config.OLLAMA_MODEL
         else:
             self.model = model
