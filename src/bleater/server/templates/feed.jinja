@@ -1,0 +1,12 @@
+{% extends "base.jinja" %}
+{% block content %}
+<ul>
+  {% for post in feed %}
+  <li>
+    <strong>{{ post.user.name }} wrote:</strong><br />
+    {{ post.content }} <br />
+    <strong><a href="/posts?id={{ post.id }}">[replies: {{ post.replies }}]</a> @ {{ post.timestamp | ts_format }}</strong>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}

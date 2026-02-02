@@ -4,6 +4,7 @@ from fastapi import FastAPI
 import uvicorn
 
 from .api import router as api_router
+from .views import router as views_router
 
 
 class BleaterServer:
@@ -15,11 +16,8 @@ class BleaterServer:
         app = FastAPI()
         app.dependency_overrides[get_storage] = await self.storage.build()
 
+        app.include_router(views_router)
         app.include_router(api_router)
-
-        @app.get("/")
-        async def root():
-            return {"message": "Hello"}
 
         self.app = app
 

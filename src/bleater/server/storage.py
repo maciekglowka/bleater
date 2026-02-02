@@ -139,7 +139,22 @@ class SqliteStorage(BaseStorage):
             return SqliteStorage._post_from_row(row)
 
     async def get_thread(self, id: str) -> Thread | None:
-        pass
+        assert self.db is not None
+
+        root = await self.get_post(id)
+        if root is None:
+            return None
+
+        cursor = await self.db.execute(
+            SqliteStorage._base_post_query()
+            + "WHERE p.parent_id = ? "
+            + SqliteStorage._post_group_by()
+            + "ORDER BY p.timestamp DESC",
+            [id],
+        )
+        rows = await cursor.fetchall()
+        replies = [SqliteStorage._post_from_row(row) for row in rows]
+        return Thread(id=id, root=root, replies=replies)
 
     async def get_last_posts(self, count: int) -> list[Post]:
         assert self.db is not None

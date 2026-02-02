@@ -37,8 +37,8 @@ class OllamaAdapter(ModelAdapter):
             self.options | options
 
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
-        print("@@@@")
-        print(messages)
+        # print("@@@@")
+        # print(messages)
         ollama_messages = self._process_messages(messages)
 
         print("$$$", output.model_json_schema())

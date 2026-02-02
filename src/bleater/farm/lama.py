@@ -11,6 +11,7 @@ from .tools import (
     get_feed,
 )
 
+# TODO make a customizable template folder
 DIR = os.path.dirname(__file__)
 TEMPLATE_PATH = os.path.join(DIR, "templates")
 JINJA_ENV = Environment(loader=FileSystemLoader(TEMPLATE_PATH))
@@ -22,7 +23,7 @@ class Lama:
         name: str,
         persona: str,
         *,
-        actions_per_session: int = 5,
+        actions_per_session: int = 7,
         user_id: str | None = None,
         system_prompt_template: str = "system_prompt.jinja",
         user_prompt_template: str = "user_prompt.jinja",

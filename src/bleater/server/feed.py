@@ -7,7 +7,7 @@ import datetime
 
 async def get_feed(storage: BaseStorage) -> list[Post]:
     ts = int(datetime.datetime.now().timestamp())
-    recent = await storage.get_last_posts(100)
+    recent = await storage.get_last_posts(500)
     if len(recent) == 0:
         return []
 

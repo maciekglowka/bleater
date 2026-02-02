@@ -1,10 +1,11 @@
-from bleater.server.feed import get_feed
-from bleater.models.posts import PostSubmitRequest, Post
-from bleater.server.storage import BaseStorage, get_storage
-from bleater.models.users import User, UserRegisterRequest
 import datetime
 from fastapi import APIRouter, Depends, Body, HTTPException
 from typing import Annotated
+
+from bleater.server.feed import get_feed
+from bleater.models.posts import PostSubmitRequest, Post, Thread
+from bleater.server.storage import BaseStorage, get_storage
+from bleater.models.users import User, UserRegisterRequest
 
 router = APIRouter(prefix="/api")
 
@@ -41,6 +42,17 @@ async def submit_post(
             body.parent_id = parent.parent_id
 
     await storage.submit_post(body, ts)
+
+
+@router.get("/posts")
+async def get_thread(
+    post_id: str,
+    storage: Annotated[BaseStorage, Depends(get_storage)],
+) -> Thread:
+    thread = await storage.get_thread(post_id)
+    if thread is None:
+        raise HTTPException(400)
+    return thread
 
 
 @router.get("/posts/recent")

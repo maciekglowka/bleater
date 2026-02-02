@@ -7,7 +7,7 @@ from bleater.server import BleaterServer
 import os
 
 
-server = BleaterServer(storage=SqlliteStorageBuilder(path="test.db"))
+server = BleaterServer(storage=SqlliteStorageBuilder())
 model = OllamaAdapter()
 
 herd = Herd(
