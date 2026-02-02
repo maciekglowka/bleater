@@ -1,6 +1,4 @@
 import asyncio
-import logging
-import os
 
 from bleater.farm.model import OllamaAdapter
 from bleater.farm.llama import Llama
