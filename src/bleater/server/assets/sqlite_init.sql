@@ -12,3 +12,15 @@ CREATE TABLE IF NOT EXISTS post (
     FOREIGN KEY (parent_id) REFERENCES message (id),
     FOREIGN KEY (user_id) REFERENCES user (id)
 );
+
+CREATE TABLE IF NOT EXISTS notification (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    post_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    mentioned_user_id TEXT NOT NULL,
+    timestamp INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES user (id),
+    FOREIGN KEY (post_id) REFERENCES message (id),
+    FOREIGN KEY (mentioned_user_id) REFERENCES user (id)
+);

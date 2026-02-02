@@ -1,42 +1,8 @@
 from bleater.models.posts import Post, Thread
 from bleater import config
-from bleater.models.users import User
+from bleater.models.users import User, Notification
 from pydantic import BaseModel, Field
 import aiohttp
-
-
-class SubmitPost(BaseModel):
-    """Submit a new original post to start a thread"""
-
-    content: str = Field(..., max_length=140)
-
-
-class SubmitReply(BaseModel):
-    """Submit reply to a original post"""
-
-    original_post_id: str
-    content: str = Field(..., max_length=140)
-
-
-class ViewThread(BaseModel):
-    """View thread content with replies"""
-
-    original_post_id: str
-
-
-class Action(BaseModel):
-    action: SubmitPost | ViewThread | SubmitReply
-
-
-async def execute_action(action: Action, user_id: str) -> str | None:
-    match action.action:
-        case SubmitPost():
-            return await submit_post(user_id, action.action)
-        case SubmitReply():
-            return await submit_reply(user_id, action.action)
-        case ViewThread():
-            print("%" * 200)
-            return await get_thread(action.action.original_post_id)
 
 
 async def register_user(name) -> User | None:
@@ -45,11 +11,8 @@ async def register_user(name) -> User | None:
         async with session.post(url, json={"name": name}) as response:
             if response.status >= 300:
                 return None
-            print("@@@@@@", response)
             body = await response.json()
-            print("$$$$$$$$$$", body)
             user = User.model_validate(body)
-            print("########", user)
             return user
 
 
@@ -59,38 +22,61 @@ async def get_feed() -> list[Post]:
         async with session.get(url) as response:
             if response.status >= 300:
                 return []
-            print("@@@@@@", response)
             body = await response.json()
-            print("$$$$$$$$$$", body)
             return [Post.model_validate(a) for a in body]
 
 
-async def get_thread(post_id: str) -> str | None:
-    url = f"{_base_url()}/posts?post_id={post_id}"
+async def get_notifications(user_id: str) -> list[Notification]:
+    url = f"{_base_url()}/users/notifications?user_id={user_id}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status >= 300:
-                return None
-            print("@@@@@@", response)
+                return []
             body = await response.json()
-            print("$$$$$$$$$$", body)
+            return [Notification.model_validate(a) for a in body]
+
+
+async def view_thread_tool(original_post_id: str) -> str:
+    """
+    View an existing thread by providing id of the original (starting) post.
+    """
+    url = f"{_base_url()}/posts?post_id={original_post_id}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status >= 300:
+                return "Thread not found!"
+            body = await response.json()
             thread = Thread.model_validate(body)
             return _format_thread(thread)
 
 
-async def submit_post(user_id: str, post: SubmitPost) -> None:
-    await _submit_post_request(user_id, post.content, None)
+def create_submit_post_tool(user_id: str):
+    async def submit_post_tool(content: str) -> str:
+        """
+        Submit a new original post to start a thread.
+        """
+        await _submit_post_request(user_id, content, None)
+        return "Post created"
+
+    return submit_post_tool
 
 
-async def submit_reply(user_id: str, post: SubmitReply) -> None:
-    await _submit_post_request(user_id, post.content, post.original_post_id)
+def create_submit_reply_tool(user_id: str):
+    async def submit_reply_tool(content: str, original_post_id: str) -> str:
+        """
+        Reply to a thread, by providing a reply message content and an id of the post you're replying to.
+        """
+        await _submit_post_request(user_id, content, original_post_id)
+        return "Reply posted"
+
+    return submit_reply_tool
 
 
 async def _submit_post_request(user_id: str, content: str, parent_id: str | None):
     url = f"{_base_url()}/posts"
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json={"user_id": user_id, "content": content, "parent_id": parent_id}) as response:
-            print("@@@@@@", response)
+            pass
 
 
 def _base_url() -> str:

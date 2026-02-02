@@ -7,16 +7,36 @@ Your persona for the role is:
 {{ persona }}
 ```
 
+You can create new threads, view existing threads and reply to other users's threads.
+When posting DO NOT repeat your previous posts or content from the feed. Be creative and original!
+
+Also, when replying DO NOT repeat previous messages in the thread,
+try to come up with something unique but relevant that would add an instersting point of view to the existing thread discussion.
+
 {% if feed|length > 0%}
-Hottest threads are:
+Currently hottest threads are:
 
 ```
 {% for post in feed %}  
   - {{ post.user.name }} wrote:
     `{{ post.content }}`
     [{{ post.replies }} replies] [Original post id: {{ post.id }}]
+
 {% endfor %}
 ```
 {% endif %}
 
-You can create new threads, view existing threads and reply to other users's threads.
+{% if notifications|length > 0%}
+Your most recent notifications are:
+
+```
+{% for notification in notifications %}  
+  - {{ notification.content }} (by {{ notification.mentioned_user.name }})
+    [Original post id: {{ notification.post_id }}]
+
+{% endfor %}
+```
+
+Try to react on those notifications to continue a discussion (if you have something new to add).
+{% endif %}
+

@@ -27,3 +27,19 @@ def _post_weight(now: int, post: Post, ts_span: int) -> int:
     else:
         tw = ts_span
     return tw + (post.replies or 0)
+
+
+async def notify_thread(post_id: str, ts: int, mentioned_user_id: str, storage: BaseStorage):
+    thread = await storage.get_thread(post_id)
+    if thread is None:
+        return
+
+    if thread.root.user.id != mentioned_user_id:
+        await storage.notify(thread.root.user.id, "New reply in your thread.", post_id, mentioned_user_id, ts)
+
+    for reply in thread.replies:
+        if reply.user.id == mentioned_user_id:
+            continue
+        await storage.notify(
+            reply.user.id, "New reply in a thread you've also replied to.", post_id, mentioned_user_id, ts
+        )

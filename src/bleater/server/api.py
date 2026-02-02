@@ -2,10 +2,10 @@ import datetime
 from fastapi import APIRouter, Depends, Body, HTTPException
 from typing import Annotated
 
-from bleater.server.feed import get_feed
+from bleater.server.feed import get_feed, notify_thread
 from bleater.models.posts import PostSubmitRequest, Post, Thread
 from bleater.server.storage import BaseStorage, get_storage
-from bleater.models.users import User, UserRegisterRequest
+from bleater.models.users import User, UserRegisterRequest, Notification
 
 router = APIRouter(prefix="/api")
 
@@ -26,6 +26,16 @@ async def user_register(
     return user
 
 
+@router.get("/users/notifications")
+async def user_notifications(
+    user_id: str,
+    storage: Annotated[BaseStorage, Depends(get_storage)],
+) -> list[Notification]:
+    notifications = await storage.get_user_notifications(user_id, 10)
+    await storage.purge_user_notifications(user_id)
+    return notifications
+
+
 @router.post("/posts")
 async def submit_post(
     body: PostSubmitRequest,
@@ -40,6 +50,9 @@ async def submit_post(
             raise HTTPException(400)
         if parent.parent_id is not None:
             body.parent_id = parent.parent_id
+
+        # Notify relevant users
+        await notify_thread(parent.id, ts, body.user_id, storage)
 
     await storage.submit_post(body, ts)
 

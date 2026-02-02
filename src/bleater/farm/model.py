@@ -1,19 +1,38 @@
 from bleater import config
 from dataclasses import dataclass
+from logging import getLogger
 from ollama import AsyncClient
 from pydantic import BaseModel
 from typing import TypeVar, Any, Callable
 
 T = TypeVar("T", bound=BaseModel)
 
+logger = getLogger(__name__)
+
 
 @dataclass
 class ModelMessage:
     role: str
     content: str | dict[str, Any]
+    tool_name: str | None = None
+
+
+@dataclass
+class ModelToolCall:
+    name: str
+    arguments: dict[str, Any]
+
+
+@dataclass
+class ModelResponse:
+    content: str | None
+    tool_calls: list[ModelToolCall]
 
 
 class ModelAdapter:
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
+        raise NotImplementedError
+
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
         raise NotImplementedError
 
@@ -36,12 +55,21 @@ class OllamaAdapter(ModelAdapter):
         if options is not None:
             self.options | options
 
-    async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
-        # print("@@@@")
-        # print(messages)
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
         ollama_messages = self._process_messages(messages)
 
-        print("$$$", output.model_json_schema())
+        response = await self.client.chat(self.model, messages=ollama_messages, options=self.options, tools=tools)
+        logger.info(f"Model response: {response}")
+        return ModelResponse(
+            content=response.message.content,
+            tool_calls=[
+                ModelToolCall(name=a.function.name, arguments=dict(a.function.arguments))
+                for a in (response.message.tool_calls or [])
+            ],
+        )
+
+    async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
+        ollama_messages = self._process_messages(messages)
 
         response = await self.client.chat(
             self.model,
@@ -49,8 +77,7 @@ class OllamaAdapter(ModelAdapter):
             options=self.options,
             format=output.model_json_schema(),
         )
-        print("####")
-        print(response)
+        logger.info(f"Model response: {response}")
         return output.model_validate_json(response.message.content)
 
     def _process_messages(self, messages: list[ModelMessage]) -> list[dict[str, Any]]:
