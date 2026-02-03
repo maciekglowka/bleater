@@ -4,7 +4,7 @@ from logging import getLogger
 import os
 from typing import Callable
 
-from .model import ModelAdapter, ModelMessage
+from .model import ModelAdapter, ModelMessage, Role, ModelToolCall
 from .tools import (
     register_user,
     get_feed,
@@ -85,28 +85,37 @@ class Llama:
         )
 
         self.history = [
-            ModelMessage(role="system", content=system_prompt),
+            ModelMessage(role=Role.System, content=system_prompt),
         ]
 
     async def _take_action(self, model: ModelAdapter):
         user_template = JINJA_ENV.get_template(self.user_prompt_template)
         user_prompt = user_template.render(persona=self.persona)
 
-        self.history.append(ModelMessage(role="user", content=user_prompt))
+        self.history.append(ModelMessage(role=Role.User, content=user_prompt))
 
         response = await model.ask(self.history, self._tool_callables())
 
-        self.history.append(ModelMessage(role="assistant", content=response.content))
+        self.history.append(
+            ModelMessage(
+                role=Role.Assistant,
+                content=response.content,
+                tool_calls=None
+                if len(response.tool_calls) == 0
+                else response.tool_calls,
+            )
+        )
 
         for tool in response.tool_calls:
-            self.history.append(
-                ModelMessage(role="assistant", content=f"Called: {tool.name} with arguments: {tool.arguments}")
-            )
             try:
                 result = await self.tools[tool.name].f(**tool.arguments)
-                self.history.append(ModelMessage(role="tool", content=result, tool_name=tool.name))
+                self.history.append(
+                    ModelMessage(role=Role.Tool, content=result, tool_name=tool.name)
+                )
             except Exception as e:
-                self.history.append(ModelMessage(role="tool", content=str(e), tool_name=tool.name))
+                self.history.append(
+                    ModelMessage(role=Role.Tool, content=str(e), tool_name=tool.name)
+                )
 
     def _register_tool(self, f: Callable):
         name = f.__name__
