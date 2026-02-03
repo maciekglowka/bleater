@@ -13,10 +13,10 @@ logger = getLogger(__name__)
 
 
 class Role(enum.Enum):
-    System = enum.auto
-    User = enum.auto
-    Assistant = enum.auto
-    Tool = enum.auto
+    System = enum.auto()
+    User = enum.auto()
+    Assistant = enum.auto()
+    Tool = enum.auto()
 
 
 @dataclass
@@ -40,9 +40,7 @@ class ModelResponse:
 
 
 class ModelAdapter:
-    async def ask(
-        self, messages: list[ModelMessage], tools: list[Callable] | None = None
-    ) -> ModelResponse:
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
         raise NotImplementedError
 
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
@@ -73,26 +71,22 @@ class OllamaAdapter(ModelAdapter):
         if options is not None:
             self.options | options
 
-    async def ask(
-        self, messages: list[ModelMessage], tools: list[Callable] | None = None
-    ) -> ModelResponse:
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
+        logger.debug(f"Model query: {messages}")
         ollama_messages = self._process_messages(messages)
 
-        response = await self.client.chat(
-            self.model, messages=ollama_messages, options=self.options, tools=tools
-        )
+        response = await self.client.chat(self.model, messages=ollama_messages, options=self.options, tools=tools)
         logger.info(f"Model response: {response}")
         return ModelResponse(
             content=response.message.content,
             tool_calls=[
-                ModelToolCall(
-                    name=a.function.name, arguments=dict(a.function.arguments)
-                )
+                ModelToolCall(name=a.function.name, arguments=dict(a.function.arguments))
                 for a in (response.message.tool_calls or [])
             ],
         )
 
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
+        logger.debug(f"Model query: {messages}")
         ollama_messages = self._process_messages(messages)
 
         response = await self.client.chat(
@@ -113,10 +107,7 @@ class OllamaAdapter(ModelAdapter):
                     {}
                     if a.tool_calls is None
                     else {
-                        "tool_calls": [
-                            {"function": {"name": t.name, "arguments": t.arguments}}
-                            for t in a.tool_calls
-                        ]
+                        "tool_calls": [{"function": {"name": t.name, "arguments": t.arguments}} for t in a.tool_calls]
                     }
                 ),
                 **({} if a.tool_name is None else {"tool_name": a.tool_name}),
@@ -156,31 +147,29 @@ class GeminiAdapter(ModelAdapter):
         else:
             self.model = model
 
-    async def ask(
-        self, messages: list[ModelMessage], tools: list[Callable] | None = None
-    ) -> ModelResponse:
+    async def ask(self, messages: list[ModelMessage], tools: list[Callable] | None = None) -> ModelResponse:
+        logger.debug(f"Model query: {messages}")
         (system_prompt, gemini_messages) = self._process_messages(messages)
 
         response = await self.client.models.generate_content(
             model=self.model,
             contents=gemini_messages,
             config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt, tools=tools
+                system_instruction=system_prompt,
+                tools=tools,
+                automatic_function_calling=genai.types.AutomaticFunctionCallingConfig(disable=True),
             ),
         )
 
         logger.info(f"Model response: {response}")
         return ModelResponse(
-            content=response.text,
-            tool_calls=[
-                ModelToolCall(
-                    name=a.function.name, arguments=dict(a.function.arguments)
-                )
-                for a in (response.message.tool_calls or [])
-            ],
+            # FIXME find text part
+            content=response.text if not response.function_calls else "",
+            tool_calls=[ModelToolCall(name=a.name, arguments=a.args) for a in (response.function_calls or [])],
         )
 
     async def ask_structured(self, messages: list[ModelMessage], output: type[T]) -> T:
+        logger.debug(f"Model query: {messages}")
         (system_prompt, gemini_messages) = self._process_messages(messages)
 
         response = await self.client.models.generate_content(
@@ -209,19 +198,13 @@ class GeminiAdapter(ModelAdapter):
             match message.role:
                 case Role.User:
                     contents.append(
-                        genai.types.UserContent(
-                            parts=[
-                                genai.types.Part.from_text(text=str(message.content))
-                            ]
-                        )
+                        genai.types.UserContent(parts=[genai.types.Part.from_text(text=str(message.content))])
                     )
                 case Role.Assistant:
                     parts = [genai.types.Part.from_text(text=str(message.content))]
                     if message.tool_calls:
                         parts += [
-                            genai.types.Part.from_function_call(
-                                name=t.name, args=t.arguments
-                            )
+                            genai.types.Part.from_function_call(name=t.name, args=t.arguments)
                             for t in message.tool_calls
                         ]
                     contents.append(genai.types.ModelContent(parts=parts))
