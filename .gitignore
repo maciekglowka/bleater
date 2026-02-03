@@ -10,5 +10,4 @@ wheels/
 .venv
 
 # Local data
-uv.lock
 test.db
